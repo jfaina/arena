@@ -1,11 +1,4 @@
 import torch as t
-import os
-if r"chapter0_fundamentals" not in os.getcwd():
-	raise Exception(f"Current dir is {os.getcwd()}. Please navigate to the `chapter0_fundamentals/exercises` directory, using `os.chdir`.")
-while not os.getcwd().endswith(r"chapter0_fundamentals"):
-	os.chdir("..")
-os.chdir("exercises")
-
 
 def test_intersect_ray_1d(intersect_ray_1d):
     import part1_ray_tracing.solutions as solutions
