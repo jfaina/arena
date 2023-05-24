@@ -45,7 +45,9 @@ def make_rays_1d(num_pixels: int, y_limit: float) -> t.Tensor:
     rays[:, 1, 1] = t.linspace(-y_limit, y_limit, num_pixels)
     return rays
 
-def intersect_ray_1d(ray: t.Tensor, segment: t.Tensor) -> bool:
+@jaxtyped
+@typeguard.typechecked
+def intersect_ray_1d(ray: Float[t.Tensor, "npoints=2 ndim=3"], segment: Float[t.Tensor, "npoints=2 ndim=3"]) -> bool:
     '''
     ray: shape (n_points=2, n_dim=3)  # O, D points
     segment: shape (n_points=2, n_dim=3)  # L_1, L_2 points
@@ -60,20 +62,32 @@ def intersect_ray_1d(ray: t.Tensor, segment: t.Tensor) -> bool:
         x = t.linalg.solve(A, b)
         u, v = x[0].item(), x[1].item()
         return u >= 0 and v >= 0 and v <= 1
-    except Exception as e:
-        print(e)
+    except Exception:
         return False
 
-if MAIN:
-    tests.test_intersect_ray_1d(intersect_ray_1d)
-    tests.test_intersect_ray_1d_special_case(intersect_ray_1d)
-
-
+@jaxtyped
+@typeguard.typechecked
 def intersect_rays_1d(rays: Float[Tensor, "nrays 2 3"], segments: Float[Tensor, "nsegments 2 3"]) -> Bool[Tensor, "nrays"]:
     '''
-    For each ray, return True if it intersects any segment.
+    For each ray, does it intersect any segment.
     '''
-    pass
+    rays_xy = rays[:, :, :-1]
+    segments_xy = segments[:, :, :-1]
+    nrays = rays.shape[0]
+    nsegments = segments.shape[0]
+    rays_all = einops.repeat(rays_xy, 'nrays b c -> nrays nsegments b c', nsegments=nsegments)
+    segments_all = einops.repeat(segments_xy, 'nsegments b c -> nrays nsegments b c', nrays=nrays)
+    D = rays_all[:, :, 1]
+    L = segments_all[:, :, 0] - segments_all[:, :, 1]
+    similarity = t.abs(t.cosine_similarity(D, L, dim=-1))
+    invertible = t.logical_not(t.isclose(similarity, t.ones((nrays, nsegments))))
+    A = t.stack((D, L), dim=-1)
+    b = segments_all[:, :, 0] - rays_all[:, :, 0]
+    x = t.linalg.solve(A[invertible], b[invertible])
+    intersects = t.zeros((nrays, nsegments), dtype=t.bool)
+    intersects[invertible] = (x[..., 0] >= 0) & (x[..., 1] >= 0) & (x[..., 1] <= 1)
+    ret = intersects.any(dim=1)
+    return ret
 
 def make_rays_2d(num_pixels_y: int, num_pixels_z: int, y_limit: float, z_limit: float) -> Float[t.Tensor, "nrays 2 3"]:
     '''
