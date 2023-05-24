@@ -35,9 +35,9 @@ def test_einsum_outer(einsum_outer):
 
 def test_trace(trace_fn):
     for n in range(10):
-        assert trace_fn(t.zeros((n, n), dtype=t.long)) == 0, f"Test failed on zero matrix with size ({n}, {n})"
-        assert trace_fn(t.eye(n, dtype=t.long)) == n, f"Test failed on identity matrix with size ({n}, {n})"
-        x = t.randint(0, 10, (n, n))
+        assert trace_fn(t.zeros((n, n), dtype=t.float32)) == 0, f"Test failed on zero matrix with size ({n}, {n})"
+        assert trace_fn(t.eye(n, dtype=t.float32)) == n, f"Test failed on identity matrix with size ({n}, {n})"
+        x = t.randint(0, 10, (n, n), dtype=t.float32)
         expected = t.trace(x)
         actual = trace_fn(x)
         assert actual == expected, f"Test failed on randmly initialised matrix with size ({n}, {n})"
