@@ -150,3 +150,26 @@ def raytrace_triangle(
     ret = t.zeros((nrays, ), dtype=t.bool)
     ret[invertible] = t.all(x >= 0, dim=1) & (x[:, 1] + x[:, 2] <= 1)
     return ret
+
+@jaxtyped
+@typeguard.typechecked
+def raytrace_mesh(
+    rays: Float[Tensor, "nrays rayPoints=2 dims=3"],
+    triangles: Float[Tensor, "ntriangles trianglePoints=3 dims=3"]
+) -> Float[Tensor, "nrays"]:
+    '''
+    For each ray, return the distance to the closest intersecting triangle, or infinity.
+    '''
+    nrays = rays.shape[0]
+    ntriangles = triangles.shape[0]
+    A, B, C = einops.repeat(triangles, 'ntriangles p d -> p nrays ntriangles d', nrays=nrays)
+    O, D = einops.repeat(rays, 'nrays p d -> p nrays ntriangles d', ntriangles=ntriangles)
+    M = t.stack((-D, B - A, C - A), dim=-1)
+    invertible = t.linalg.det(M).abs() > 1e-7
+    M[~invertible] = t.eye(3)
+    b = O - A
+    x = t.linalg.solve(M, b)
+    finite = t.all(x >= 0, dim=-1) & (x[..., 1] + x[..., 2] <= 1) & invertible
+    dists = t.where(finite, t.linalg.norm(D, dim=-1) * x[..., 0], float('inf'))
+    ret = dists.min(dim=1).values
+    return ret
