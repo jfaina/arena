@@ -89,6 +89,8 @@ def intersect_rays_1d(rays: Float[Tensor, "nrays 2 3"], segments: Float[Tensor, 
     ret = intersects.any(dim=1)
     return ret
 
+@jaxtyped
+@typeguard.typechecked
 def make_rays_2d(num_pixels_y: int, num_pixels_z: int, y_limit: float, z_limit: float) -> Float[t.Tensor, "nrays 2 3"]:
     '''
     num_pixels_y: The number of pixels in the y dimension
@@ -99,7 +101,13 @@ def make_rays_2d(num_pixels_y: int, num_pixels_z: int, y_limit: float, z_limit: 
 
     Returns: shape (num_rays=num_pixels_y * num_pixels_z, num_points=2, num_dims=3).
     '''
-    pass
+    nrays = num_pixels_y * num_pixels_z
+    rays = t.zeros((num_pixels_y, num_pixels_z, 2, 3))
+    rays[:, :, 1, 0] = 1.0
+    rays[:, :, 1, 1] = einops.repeat(t.linspace(-y_limit, y_limit, num_pixels_y), 'y -> y z', z=num_pixels_z)
+    rays[:, :, 1, 2] = einops.repeat(t.linspace(-z_limit, z_limit, num_pixels_z), 'z -> y z', y=num_pixels_y)
+    return rays.reshape((nrays, 2, 3))
+
 
 Point = Float[Tensor, "points=3"]
 
@@ -115,4 +123,10 @@ def triangle_ray_intersects(A: Point, B: Point, C: Point, O: Point, D: Point) ->
 
     Return True if the ray and the triangle intersect.
     '''
-    pass
+    M = t.stack((-D, B - A, C - A), dim=1)
+    b = O - A
+    try:
+        x = t.linalg.solve(M, b)
+        return t.all(x >= 0).item() and (x[1] + x[2]).item() <= 1
+    except Exception:
+        return False
