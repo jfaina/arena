@@ -130,3 +130,23 @@ def triangle_ray_intersects(A: Point, B: Point, C: Point, O: Point, D: Point) ->
         return t.all(x >= 0).item() and (x[1] + x[2]).item() <= 1
     except Exception:
         return False
+    
+@jaxtyped
+@typeguard.typechecked
+def raytrace_triangle(
+    rays: Float[Tensor, "nrays rayPoints=2 dims=3"],
+    triangle: Float[Tensor, "trianglePoints=3 dims=3"]
+) -> Bool[Tensor, "nrays"]:
+    '''
+    For each ray, does the triangle intersects that ray.
+    '''
+    nrays = rays.shape[0]
+    A, B, C = einops.repeat(triangle, 'p d -> p nrays d', nrays=nrays)
+    O, D = rays.unbind(dim=1)
+    M = t.stack((-D, B - A, C - A), dim=-1)
+    invertible = t.linalg.det(M).abs() > 1e-7
+    b = O - A
+    x = t.linalg.solve(M[invertible], b[invertible])
+    ret = t.zeros((nrays, ), dtype=t.bool)
+    ret[invertible] = t.all(x >= 0, dim=1) & (x[:, 1] + x[:, 2] <= 1)
+    return ret
