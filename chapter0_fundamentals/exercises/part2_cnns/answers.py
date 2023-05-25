@@ -202,3 +202,66 @@ def as_strided_mm(matA: Float[Tensor, "i j"], matB: Float[Tensor, "j k"]) -> Flo
 if MAIN:
     tests.test_mm(as_strided_mm)
     tests.test_mm2(as_strided_mm)
+
+@jaxtyped
+@typeguard.typechecked
+def conv1d_minimal_simple(x: Float[Tensor, "w"], weights: Float[Tensor, "kw"]) -> Float[Tensor, "ow"]:
+    '''
+    Like torch's conv1d using bias=False and all other keyword arguments left at their default values.
+
+    Simplifications: batch = input channels = output channels = 1.
+
+    x: shape (width,)
+    weights: shape (kernel_width,)
+
+    Returns: shape (output_width,)
+    '''
+    stride = min(x.stride())
+    out_width = x.shape[0] - weights.shape[0] + 1
+    x_sym = x.as_strided(size=(out_width, weights.shape[0]), stride=(stride, stride))
+    return einops.einsum(x_sym, weights, 'ow kw, kw-> ow')
+
+
+if MAIN:
+    tests.test_conv1d_minimal_simple(conv1d_minimal_simple)
+
+@jaxtyped
+@typeguard.typechecked
+def conv1d_minimal(x: Float[Tensor, "b ic w"], weights: Float[Tensor, "oc ic kw"]) -> Float[Tensor, "b oc ow"]:
+    '''
+    Like torch's conv1d using bias=False and all other keyword arguments left at their default values.
+
+    x: shape (batch, in_channels, width)
+    weights: shape (out_channels, in_channels, kernel_width)
+
+    Returns: shape (batch, out_channels, output_width)
+    '''
+    out_width = x.shape[2] - weights.shape[2] + 1
+    x_sym = x.as_strided(size=(x.shape[0], x.shape[1], out_width, weights.shape[2]),
+                         stride=(x.stride()[0], x.stride()[1], x.stride()[2], x.stride()[2]))
+    return einops.einsum(x_sym, weights, 'b ic ow kw, oc ic kw -> b oc ow')
+
+
+if MAIN:
+    tests.test_conv1d_minimal(conv1d_minimal)
+
+@jaxtyped
+@typeguard.typechecked
+def conv2d_minimal(x: Float[Tensor, "b ic h w"], weights: Float[Tensor, "oc ic kh kw"]) -> Float[Tensor, "b oc oh ow"]:
+    '''
+    Like torch's conv2d using bias=False and all other keyword arguments left at their default values.
+
+    x: shape (batch, in_channels, height, width)
+    weights: shape (out_channels, in_channels, kernel_height, kernel_width)
+
+    Returns: shape (batch, out_channels, output_height, output_width)
+    '''
+    out_height = x.shape[2] - weights.shape[2] + 1
+    out_width = x.shape[3] - weights.shape[3] + 1
+    x_sym = x.as_strided(size=(x.shape[0], x.shape[1], weights.shape[2], out_height, weights.shape[3], out_width),
+                         stride=(x.stride()[0], x.stride()[1], x.stride()[2], x.stride()[2], x.stride()[3], x.stride()[3]))
+    return einops.einsum(x_sym, weights, 'b ic kh oh kw ow, oc ic kh kw -> b oc oh ow')
+  
+
+if MAIN:
+    tests.test_conv2d_minimal(conv2d_minimal)
