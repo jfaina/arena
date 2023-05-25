@@ -265,3 +265,43 @@ def conv2d_minimal(x: Float[Tensor, "b ic h w"], weights: Float[Tensor, "oc ic k
 
 if MAIN:
     tests.test_conv2d_minimal(conv2d_minimal)
+
+
+@jaxtyped
+@typeguard.typechecked
+def pad1d(x: t.Tensor, left: int, right: int, pad_value: float) -> t.Tensor:
+    '''Return a new tensor with padding applied to the edges.
+
+    x: shape (batch, in_channels, width), dtype float32
+
+    Return: shape (batch, in_channels, left + right + width)
+    '''
+    assert left >= 0 and right >= 0
+    ret = x.new_full(size=(x.shape[0], x.shape[1], x.shape[2] + left + right), fill_value=pad_value)
+    ret[..., left:ret.shape[2]-right] = x
+    return ret
+
+
+if MAIN:
+    tests.test_pad1d(pad1d)
+    tests.test_pad1d_multi_channel(pad1d)
+
+@jaxtyped
+@typeguard.typechecked
+def pad2d(x: t.Tensor, left: int, right: int, top: int, bottom: int, pad_value: float) -> t.Tensor:
+    '''Return a new tensor with padding applied to the edges.
+
+    x: shape (batch, in_channels, height, width), dtype float32
+
+    Return: shape (batch, in_channels, top + height + bottom, left + width + right)
+    '''
+    assert left >= 0 and right >= 0 and top >= 0 and bottom >= 0
+    ret = x.new_full(size=(x.shape[0], x.shape[1], x.shape[2] + top + bottom, x.shape[3] + left + right),
+                     fill_value=pad_value)
+    ret[..., top:ret.shape[2]-bottom, left:ret.shape[3]-right] = x
+    return ret
+
+
+if MAIN:
+    tests.test_pad2d(pad2d)
+    tests.test_pad2d_multi_channel(pad2d)
