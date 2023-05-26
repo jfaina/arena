@@ -305,3 +305,33 @@ def pad2d(x: t.Tensor, left: int, right: int, top: int, bottom: int, pad_value: 
 if MAIN:
     tests.test_pad2d(pad2d)
     tests.test_pad2d_multi_channel(pad2d)
+
+
+@jaxtyped
+@typeguard.typechecked
+def conv1d(
+    x: Float[Tensor, "b ic w"], 
+    weights: Float[Tensor, "oc ic kw"], 
+    stride: int = 1, 
+    padding: int = 0
+) -> Float[Tensor, "b oc ow"]:
+    '''
+    Like torch's conv1d using bias=False.
+
+    x: shape (batch, in_channels, width)
+    weights: shape (out_channels, in_channels, kernel_width)
+
+    Returns: shape (batch, out_channels, output_width)
+    '''
+    if padding:
+        x_pad = pad1d(x, left=padding, right=padding, pad_value=0)
+    else:
+        x_pad = x
+    out_width = (x_pad.shape[2] - weights.shape[2]) // stride + 1
+    x_sym = x_pad.as_strided(size=(x_pad.shape[0], x_pad.shape[1], out_width, weights.shape[2]),
+                stride=(x_pad.stride()[0], x_pad.stride()[1], x_pad.stride()[2] * stride, x_pad.stride()[2]))
+    return einops.einsum(x_sym, weights, 'b ic ow kw, oc ic kw -> b oc ow')
+
+
+if MAIN:
+    tests.test_conv1d(conv1d)
