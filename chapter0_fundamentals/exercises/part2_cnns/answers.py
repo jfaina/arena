@@ -28,6 +28,7 @@ import part2_cnns.tests as tests
 
 MAIN = __name__ == "__main__"
 
+
 if MAIN and False:
     arr = np.load(section_dir / "numbers.npy")
     for array in [
@@ -338,8 +339,9 @@ def conv1d(
 if MAIN:
     tests.test_conv1d(conv1d)
 
-IntPair = Tuple[int, int]
-IntOrPair = Union[int, IntPair]
+IntLike = Union[int, np.int64]
+IntPair = Tuple[IntLike, IntLike]
+IntOrPair = Union[IntLike, IntPair]
 
 def force_pair(v: IntOrPair) -> IntPair:
     '''Convert v to a pair of int, if it isn't already.'''
@@ -351,6 +353,8 @@ def force_pair(v: IntOrPair) -> IntPair:
         return (v, v)
     raise ValueError(v)
 
+@jaxtyped
+@typeguard.typechecked
 def conv2d(
     x: Float[Tensor, "b ic h w"], 
     weights: Float[Tensor, "oc ic kh kw"], 
@@ -366,9 +370,13 @@ def conv2d(
     Returns: shape (batch, out_channels, output_height, output_width)
     '''
     padding_height, padding_width = force_pair(padding)
+    assert padding_height >= 0 and padding_width >= 0
     stride_height, stride_width = force_pair(stride)
     assert stride_height > 0 and stride_width > 0
-    x_pad = pad2d(x, left=padding_width, right=padding_width, top=padding_height, bottom=padding_height, pad_value=0)
+    if padding_height or padding_width:
+        x_pad = pad2d(x, left=padding_width, right=padding_width, top=padding_height, bottom=padding_height, pad_value=0)
+    else:
+        x_pad = x
     out_height = (x_pad.shape[2] - weights.shape[2]) // stride_height + 1
     out_width = (x_pad.shape[3] - weights.shape[3]) // stride_width + 1
     x_sym = x_pad.as_strided(size=(x_pad.shape[0], x_pad.shape[1], weights.shape[2], out_height, weights.shape[3], out_width),
@@ -380,3 +388,42 @@ def conv2d(
 
 if MAIN:
     tests.test_conv2d(conv2d)
+
+@jaxtyped
+@typeguard.typechecked
+def maxpool2d(
+    x: Float[Tensor, "b ic h w"], 
+    kernel_size: IntOrPair, 
+    stride: Optional[IntOrPair] = None, 
+    padding: IntOrPair = 0
+) -> Float[Tensor, "b ic oh ow"]:
+    '''
+    Like PyTorch's maxpool2d.
+
+    x: shape (batch, channels, height, width)
+    stride: if None, should be equal to the kernel size
+
+    Return: (batch, channels, output_height, output_width)
+    '''
+    padding_height, padding_width = force_pair(padding)
+    assert padding_height >= 0 and padding_width >= 0
+    stride_height, stride_width = force_pair(stride if stride is not None else kernel_size)
+    assert stride_height > 0 and stride_width > 0
+    kernel_height, kernel_width = force_pair(kernel_size)
+    assert kernel_height > 0 and kernel_width > 0
+    if padding_height or padding_width:
+        x_pad = pad2d(x, left=padding_width, right=padding_width, top=padding_height, bottom=padding_height, pad_value=-t.inf)
+    else:
+        x_pad = x
+    out_height = (x_pad.shape[2] - kernel_height) // stride_height + 1
+    out_width = (x_pad.shape[3] - kernel_width) // stride_width + 1
+    x_sym = x_pad.as_strided(size=(x_pad.shape[0], x_pad.shape[1], kernel_height, out_height, kernel_width, out_width),
+                             stride=(x_pad.stride()[0], x_pad.stride()[1], x_pad.stride()[2], stride_height * x_pad.stride()[2],
+                                     x_pad.stride()[3], stride_width * x_pad.stride()[3]))
+    # equivalent to einops.reduce(x_sym, 'b ic kh oh kw ow -> b ic oh ow', 'max')
+    return t.amax(x_sym, dim=(2, 4))
+
+
+
+if MAIN:
+    tests.test_maxpool2d(maxpool2d, n_tests=100)
