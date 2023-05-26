@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import sys
 import numpy as np
@@ -323,6 +324,7 @@ def conv1d(
 
     Returns: shape (batch, out_channels, output_width)
     '''
+    assert stride > 0
     if padding:
         x_pad = pad1d(x, left=padding, right=padding, pad_value=0)
     else:
@@ -335,3 +337,46 @@ def conv1d(
 
 if MAIN:
     tests.test_conv1d(conv1d)
+
+IntPair = Tuple[int, int]
+IntOrPair = Union[int, IntPair]
+
+def force_pair(v: IntOrPair) -> IntPair:
+    '''Convert v to a pair of int, if it isn't already.'''
+    if isinstance(v, tuple):
+        if len(v) != 2:
+            raise ValueError(v)
+        return (int(v[0]), int(v[1]))
+    elif isinstance(v, int):
+        return (v, v)
+    raise ValueError(v)
+
+def conv2d(
+    x: Float[Tensor, "b ic h w"], 
+    weights: Float[Tensor, "oc ic kh kw"], 
+    stride: IntOrPair = 1, 
+    padding: IntOrPair = 0
+) -> Float[Tensor, "b oc oh ow"]:
+    '''
+    Like torch's conv2d using bias=False
+
+    x: shape (batch, in_channels, height, width)
+    weights: shape (out_channels, in_channels, kernel_height, kernel_width)
+
+    Returns: shape (batch, out_channels, output_height, output_width)
+    '''
+    padding_height, padding_width = force_pair(padding)
+    stride_height, stride_width = force_pair(stride)
+    assert stride_height > 0 and stride_width > 0
+    x_pad = pad2d(x, left=padding_width, right=padding_width, top=padding_height, bottom=padding_height, pad_value=0)
+    out_height = (x_pad.shape[2] - weights.shape[2]) // stride_height + 1
+    out_width = (x_pad.shape[3] - weights.shape[3]) // stride_width + 1
+    x_sym = x_pad.as_strided(size=(x_pad.shape[0], x_pad.shape[1], weights.shape[2], out_height, weights.shape[3], out_width),
+                             stride=(x_pad.stride()[0], x_pad.stride()[1], x_pad.stride()[2], stride_height * x_pad.stride()[2],
+                                     x_pad.stride()[3], stride_width * x_pad.stride()[3]))
+    return einops.einsum(x_sym, weights, 'b ic kh oh kw ow, oc ic kh kw -> b oc oh ow')
+
+
+
+if MAIN:
+    tests.test_conv2d(conv2d)
