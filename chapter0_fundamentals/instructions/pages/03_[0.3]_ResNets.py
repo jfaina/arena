@@ -57,8 +57,6 @@ Today's exercises are probably the most directly relevant for the rest of the pr
 
 In part 1, we'll use the modules that we defined in previous exercises to build a basic CNN to classify MNIST images. We'll also learn how to train that CNN, using the very useful **PyTorch Lightning** module.
 
-This section should take **2-3 hours**.
-
 > ##### Learning Objectives
 >
 > * Learn how to assemble a convolutional neural network
@@ -68,8 +66,6 @@ This section should take **2-3 hours**.
 ### 2️⃣ Assembling ResNet
 
 In part 2, we'll start by defining a few more important modules (e.g. `BatchNorm2d` and `Sequential`), building on our work from yesterday. Then we'll build a much more complex architecture - a **residual neural network**, which uses a special type of connection called **skip connections**. 
-
-This section should take approximately **2-3 hours**.
 
 > ##### Learning Objectives
 > 
@@ -860,7 +856,7 @@ class LitConvNetTest(pl.LightningModule):
         self.convnet = ConvNet()
         self.args = args
 
-    def _shared_train_val_step(self, batch: Tuple[t.Tensor, t.Tensor]) -> Tuple[t.Tensor, t.Tensor, t.Tensor]:
+    def _shared_train_val_step(self, batch: Tuple[t.Tensor, t.Tensor]) -> Tuple[t.Tensor, t.Tensor]:
         '''Convenience function since train/validation steps are similar.'''
         pass
 
@@ -929,7 +925,7 @@ class LitConvNetTest(pl.LightningModule):
         self.convnet = ConvNet()
         self.args = args
 
-    def _shared_train_val_step(self, batch: Tuple[t.Tensor, t.Tensor]) -> Tuple[t.Tensor, t.Tensor, t.Tensor]:
+    def _shared_train_val_step(self, batch: Tuple[t.Tensor, t.Tensor]) -> Tuple[t.Tensor, t.Tensor]:
         '''Convenience function since train/validation steps are similar.'''
         # SOLUTION
         imgs, labels = batch
@@ -1388,15 +1384,7 @@ class AveragePool(nn.Module):
 <details>
 <summary>Solution</summary>
 
-```python
-class AveragePool(nn.Module):
-    def forward(self, x: t.Tensor) -> t.Tensor:
-        '''
-        x: shape (batch, channels, height, width)
-        Return: shape (batch, channels)
-        '''
-        return t.mean(x, dim=(2, 3))
-```
+
 ```python
 class AveragePool(nn.Module):
     def forward(self, x: t.Tensor) -> t.Tensor:
@@ -1435,7 +1423,7 @@ The right-most block in the diagram, `ResidualBlock`, is nested inside `BlockGro
 Similarly, `BlockGroup` is nested multiple times (four to be precise) in the full `ResNet34` architecture.
 </details>
 
-<img src="https://raw.githubusercontent.com/callummcdougall/computational-thread-art/master/example_images/misc/resnet_diagram.svg" width="900">
+<img src="https://raw.githubusercontent.com/callummcdougall/computational-thread-art/master/example_images/misc/resnet_diagram_fixed3.svg" width="900">
 
 
 
@@ -2130,6 +2118,17 @@ if MAIN:
 
 ```
 
+```python
+
+if MAIN:
+    my_resnet = get_resnet_for_feature_extraction(n_classes=10)
+    
+    for i, (name, param) in enumerate(my_resnet.named_parameters()):
+        print(f"{i}: {name} {param.shape}")
+    
+
+```
+
 <details>
 <summary>Solution</summary>
 
@@ -2240,7 +2239,7 @@ class LitResNet(pl.LightningModule):
         super().__init__()
         pass
 
-    def _shared_train_val_step(self, batch: Tuple[t.Tensor, t.Tensor]) -> Tuple[t.Tensor, t.Tensor, t.Tensor]:
+    def _shared_train_val_step(self, batch: Tuple[t.Tensor, t.Tensor]) -> Tuple[t.Tensor, t.Tensor]:
         '''
         Convenience function since train/validation steps are similar.
         '''

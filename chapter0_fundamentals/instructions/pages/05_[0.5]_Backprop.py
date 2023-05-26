@@ -280,7 +280,7 @@ If $N>1$, then pick any node, and follow the arrows until you reach a node with 
 </details>
 
 
-A quick note on some potentially confusing terminology. In some contexts (e.g. causal inference), it's common to call nodes with no arrows coming out of them "root nodes", and nodes with no arrows going into them "leaf nodes" (so in the diagram at the top of the page, the left nodes would be roots and the right nodes would be leaves).
+A quick note on some potentially confusing terminology. In some contexts (e.g. causal inference), it's common to call nodes with no arrows coming out of them "root nodes", and nodes with no arrows going into them "leaf nodes" (so in the diagram at the top of the page, the left nodes would be leaves and the right nodes would be roots).
 
 When we talk about computational graphs, the language is the other way around. In the diagram, `a`, `b` and `c` are the leaf nodes, and `L` is the root node. 
 
@@ -630,20 +630,7 @@ You should be able to implement both functions in just one line.
 <details>
 <summary>Solution</summary>
 
-```python
-def multiply_back0(grad_out: Arr, out: Arr, x: Arr, y: Union[Arr, float]) -> Arr:
-    '''Backwards function for x * y wrt argument 0 aka x.'''
-    if not isinstance(y, Arr):
-        y = np.array(y)
-    return unbroadcast(y * grad_out, x)
 
-
-def multiply_back1(grad_out: Arr, out: Arr, x: Union[Arr, float], y: Arr) -> Arr:
-    '''Backwards function for x * y wrt argument 1 aka y.'''
-    if not isinstance(x, Arr):
-        x = np.array(x)
-    return unbroadcast(x * grad_out, y)
-```
 ```python
 def multiply_back0(grad_out: Arr, out: Arr, x: Arr, y: Union[Arr, float]) -> Arr:
     '''Backwards function for x * y wrt argument 0 aka x.'''
@@ -658,40 +645,6 @@ def multiply_back1(grad_out: Arr, out: Arr, x: Union[Arr, float], y: Arr) -> Arr
         x = np.array(x)
     # SOLUTION
     return unbroadcast(x * grad_out, y)
-```
-</details>
-<details>
-<summary>Help - I don't understand why the solution works.</summary>
-
-Take `multiply_back0`.
-
-If `x` was broadcasted up to be the size of `y`, then `y` and `grad_out` will have the same shape, and the derivative of `L` wrt the broadcasted version of `x` will be `y * grad_out`. We then use `unbroadcast` to get the derivative wrt the original version of `x`.
-
-If `y` was broadcasted up to be the size of `x`, then the derivative of `L` wrt `x` is `y_broadcasted * grad_out`. But this is exactly the same as `y * grad_out` (becauase `y` gets broadcasted when we perform this multiplication), and then unbroadcasting wrt `x` does nothing because `y * grad_out` and `x` have the same shape.
-
-This might be a clearer way of writing the function, but it has the same result:
-
-```python
-def multiply_back0(grad_out: Arr, out: Arr, x: Arr, y: Union[Arr, float]) -> Arr:
-    '''Backwards function for x * y wrt argument 0 aka x.'''
-    if not isinstance(y, Arr):
-        y = np.array(y)
-
-    # If x was broadcasted up to the size of y...
-    if sum(x.shape) < sum(y.shape):
-        # ...then we calculate dL/d(x_broadcasted), and unbroadcast the result
-        assert y.shape == grad_out.shape
-        dL_dx_broadcasted = y * grad_out
-        dL_dx = unbroadcast(dL_dx_broadcasted, x)
-    
-    # If y was broadcasted up to the size of x (or there was no broadcasting)...
-    else:
-        # ...then we calculate dL/dx using y_broadcasted
-        y_broadcasted = np.broadcast_to(y, x.shape)
-        assert y_broadcasted.shape == grad_out.shape
-        dL_dx = y_broadcasted * grad_out
-    
-    return dL_dx
 ```
 </details>
 
@@ -3615,7 +3568,7 @@ So far we've registered a separate backwards for each input argument that could 
 
 
 func_page_list = [
-    (section_0, '🏠 Home'),     (section_1, '1️⃣ Introduction'),     (section_2, '2️⃣ Autograd'),     (section_3, '3️⃣ More forward & backward functions'),     (section_4, '4️⃣ Putting everything together'),     (section_5, '5️⃣ Bonus'), 
+    (section_0, "🏠 Home"),     (section_1, "1️⃣ Introduction"),     (section_2, "2️⃣ Autograd"),     (section_3, "3️⃣ More forward & backward functions"),     (section_4, "4️⃣ Putting everything together"),     (section_5, "5️⃣ Bonus"), 
 ]
 
 func_list = [func for func, page in func_page_list]
